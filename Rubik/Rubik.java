@@ -411,9 +411,7 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 			newMatrix[face2][j] = matrix[face1][j] * Math.sin(rotationAngle)
 					+ matrix[face2][j] * Math.cos(rotationAngle);
 		}
-		for (int j = 0; j < 3; j++)
-			for (int k = 0; k < 3; k++)
-				matrix[j][k] = newMatrix[j][k];
+		matrix = newMatrix;
 	}
 
 	/**
