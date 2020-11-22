@@ -18,6 +18,7 @@ import javax.swing.JPanel;
 
 @SuppressWarnings("serial")
 public class Rubik extends JPanel implements KeyListener, MouseListener {
+
 	/**
 	 * the rubik cube
 	 */
@@ -188,10 +189,12 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 		for (int i = 0; i < 3; i++) {
 			int face1 = 0;
 			int face2 = 1;
-			if (i <= 1)
+			if (i <= 1) {
 				face2 = 2;
-			if (i == 0)
+			}
+			if (i == 0) {
 				face1 = 1;
+			}
 			// i, face1, face2 = {0, 1, 2}
 			for (int j = -1; j <= 1; j += 2) {
 				int color = i * 2 + (j + 1) / 2;
@@ -215,11 +218,14 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 			Arrays.fill(matrix[i], 0);
 			matrix[i][i] = 1;
 		}
+
+		// move the mouse to the center
 		try {
 			robot = new Robot();
 			robot.mouseMove(centerx, centery + topHeight);
 		} catch (Exception e) {
 		}
+
 		addKeyListener(this);
 		addMouseListener(this);
 		setFocusable(true);
@@ -265,8 +271,9 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 					rotateFace = current.face;
 					rotateLayer = current.layer;
 					rotateDirection = current.direction;
-					if (moves.size() == 0)
+					if (moves.size() == 0) {
 						solve = false;
+					}
 				}
 			}
 		}
@@ -276,15 +283,24 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 	 * Each frame, rotates the camera and the cube
 	 */
 	public void move() {
-		this.requestFocusInWindow();
-		if (up)
+
+		this.requestFocusInWindow(); // probably useless now but idk
+
+		// keyboard rotation
+		if (up) {
 			macrorotate(1, 1.5d * n);
-		if (down)
+		}
+		if (down) {
 			macrorotate(1, -1.5d * n);
-		if (left)
+		}
+		if (left) {
 			macrorotate(0, 1.5d * n);
-		if (right)
+		}
+		if (right) {
 			macrorotate(0, -1.5d * n);
+		}
+
+		// mouse rotation
 		int mousex = MouseInfo.getPointerInfo().getLocation().x;
 		int mousey = MouseInfo.getPointerInfo().getLocation().y - topHeight;
 		macrorotate(1, centerx - mousex);
@@ -292,17 +308,21 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 		cameraCenter.x = matrix[2][0] * 900 * n;
 		cameraCenter.y = matrix[2][1] * 900 * n;
 		cameraCenter.z = matrix[2][2] * 900 * n;
+
+		// move the mouse back to the center
 		try {
 			robot.mouseMove(centerx, centery + topHeight);
 		} catch (Exception e) {
 		}
+
 		if (!pause) {
 			if (rotateTime >= 0) {
 				rotateTime--;
 				microrotate(rotateFace, rotateLayer, rotateDirection);
 			}
-			if (rotateTime == 0)
+			if (rotateTime == 0) {
 				rotateTime = -1;
+			}
 		}
 		jf.repaint();
 	}
@@ -310,8 +330,12 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 	public void paint(Graphics g) {
 		g.setColor(Color.BLUE);
 		g.fillRect(0, 0, screenWidth, screenHeight); // background
-		for (int i = 0; i < n * n * 12; i++)
+		for (int i = 0; i < n * n * 12; i++) {
 			cube[i].update();
+		}
+
+		g.translate(centerx, centery);
+
 		Arrays.sort(cube);
 		int[] cursorx = new int[4];
 		int[] cursory = new int[4];
@@ -322,49 +346,37 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 			int[] drawy = new int[4];
 			for (int j = 0; j < 4; j++) {
 				Point p = d.points[j];
+
+				// matrix multiplication
 				p.ax = matrix[0][0] * (p.x - cameraCenter.x) + matrix[0][1] * (p.y - cameraCenter.y)
 						+ matrix[0][2] * (p.z - cameraCenter.z);
 				p.ay = matrix[1][0] * (p.x - cameraCenter.x) + matrix[1][1] * (p.y - cameraCenter.y)
 						+ matrix[1][2] * (p.z - cameraCenter.z);
 				p.az = matrix[2][0] * (p.x - cameraCenter.x) + matrix[2][1] * (p.y - cameraCenter.y)
 						+ matrix[2][2] * (p.z - cameraCenter.z);
-				drawx[j] = (int) (p.ax / p.az * magnification) + centerx;
-				drawy[j] = (int) (p.ay / p.az * magnification) + centery;
+				drawx[j] = (int) (p.ax / p.az * magnification);
+				drawy[j] = (int) (p.ay / p.az * magnification);
 			}
 			g.setColor(colors[d.color]);
-			if (d.equals(selected))
+			if (d.equals(selected)) {
 				g.setColor(Color.GRAY);
+			}
 			g.fillPolygon(drawx, drawy, 4);
-			if (d.color == 6)
+			if (d.color == 6) {
 				continue;
+			}
 
 			// determining if the cursor hovers on this square
-			int leftIntersections = 0;
-			int rightIntersections = 0;
+			int[] crossProducts = new int[4];
 			for (int j = 0; j < 4; j++) {
 				int k = (j + 1) % 4;
 				int ax = drawx[j];
 				int ay = drawy[j];
 				int bx = drawx[k];
 				int by = drawy[k];
-				if ((ay > centery && by > centery) || (ay < centery && by < centery))
-					continue;
-				if (ay == centery) {
-					if (ax <= centerx)
-						leftIntersections++;
-					else
-						rightIntersections++;
-					continue;
-				}
-				if (by == centery)
-					continue;
-				double intersect = (double) (ax * (by - centery) - bx * (ay - centery)) / (by - ay);
-				if (intersect <= centerx)
-					leftIntersections++;
-				else
-					rightIntersections++;
+				crossProducts[j] = ax * by - ay * bx; // cross product
 			}
-			if (leftIntersections % 2 == 1 && rightIntersections % 2 == 1) { // odd number of intersections
+			if (sameSign(crossProducts)) {
 				if (d.dist < minimumDistance) {
 					minimumDistance = d.dist;
 					selecting = d;
@@ -378,11 +390,11 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 		g.setColor(Color.BLUE);
 		g.fillPolygon(cursorx, cursory, 4); // where cursor is pointing at
 		g.setColor(Color.WHITE);
-		g.fillRect(centerx - 57, 20, 117, 30);
+		g.fillRect(-57, 20 - centery, 117, 30);
 		g.setColor(Color.BLACK);
-		g.drawOval(centerx - 50, 28, 15, 15);
-		g.drawString("C", centerx - 47, 40);
-		g.drawString("Jonathan Guo", centerx - 30, 40);
+		g.drawOval(-50, 28 - centery, 15, 15);
+		g.drawString("C", -47, 40 - centery);
+		g.drawString("Jonathan Guo", -30, 40 - centery);
 	}
 
 	/**
@@ -397,10 +409,12 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 			return;
 		int face1 = 0;
 		int face2 = 1;
-		if (index != 2)
+		if (index != 2) {
 			face2 = 2;
-		if (index == 0)
+		}
+		if (index == 0) {
 			face1 = 1;
+		}
 		// ind1, face1, face2 = {0, 1, 2}
 		double[][] newMatrix = new double[3][3];
 		double rotationAngle = rotationConstant * multiplier * -1;
@@ -424,10 +438,12 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 	public void microrotate(int ind, int rn, int dir) {
 		int face1 = 0;
 		int face2 = 1;
-		if (ind <= 1)
+		if (ind <= 1) {
 			face2 = 2;
-		if (ind == 0)
+		}
+		if (ind == 0) {
 			face1 = 1;
+		}
 		// ind1, face1, face2 = {0, 1, 2}
 		double rotationAngle = rotationConstant * dir * 9;
 		double lowerBound = -1 * value + rn * 100 - 15;
@@ -441,12 +457,20 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 					c.xyz[j][face1] = coord1 * Math.cos(rotationAngle) - coord2 * Math.sin(rotationAngle);
 					c.xyz[j][face2] = coord1 * Math.sin(rotationAngle) + coord2 * Math.cos(rotationAngle);
 				}
-				for (int k = 0; k < 3; k++)
+				for (int k = 0; k < 3; k++) {
 					c.center[k] = (c.xyz[0][k] + c.xyz[2][k]) / 2;
+				}
 			}
 		}
 	}
 
+	/**
+	 * Main method
+	 * 
+	 * @param args
+	 * @throws InterruptedException
+	 * @throws IOException
+	 */
 	public static void main(String[] args) throws InterruptedException, IOException {
 		game = new Rubik();
 		game.init();
@@ -461,9 +485,50 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 	 */
 	public static double distance(double[] vec1, double[] vec2) {
 		double ret = 0;
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < 3; i++) {
 			ret += (vec1[i] - vec2[i]) * (vec1[i] - vec2[i]);
+		}
 		return Math.sqrt(ret);
+	}
+
+	/**
+	 * checks if all integers have the same sign (0 is regarded as both signs)
+	 * 
+	 * @param xp array to be checked
+	 * @return whether or not all integers have the same sign
+	 */
+	private static boolean sameSign(int[] xp) {
+		return allNonNegative(xp) || allNonPositive(xp);
+	}
+
+	/**
+	 * checks if all integers are non-negative (0 or positive)
+	 * 
+	 * @param xp array to be checked
+	 * @return whether or not all integers are greater than or equal to 0
+	 */
+	private static boolean allNonNegative(int[] xp) {
+		for (int c : xp) {
+			if (c > 0) {
+				return false;
+			}
+		}
+		return true;
+	}
+
+	/**
+	 * checks if all integers are non-positive (0 or negative)
+	 * 
+	 * @param xp array to be checked
+	 * @return whether or not all integers are less than or equal to 0
+	 */
+	private static boolean allNonPositive(int[] xp) {
+		for (int c : xp) {
+			if (c < 0) {
+				return false;
+			}
+		}
+		return true;
 	}
 
 	@Override
@@ -473,62 +538,69 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 	@Override
 	public void keyPressed(KeyEvent e) {
 		String key = KeyEvent.getKeyText(e.getKeyCode());
-		if (key.equals("D"))
+		if (key.equals("D")) {
 			down = true;
-		if (key.equals("S"))
+		} else if (key.equals("S")) {
 			right = true;
-		if (key.equals("A"))
+		} else if (key.equals("A")) {
 			up = true;
-		if (key.equals("W"))
+		} else if (key.equals("W")) {
 			left = true;
-		if (key.equals("P"))
+		} else if (key.equals("P")) {
 			pause = !pause;
-		if (key.equals("Q")) {
+		} else if (key.equals("Q")) {
 			shuffle = !shuffle;
-			if (shuffle)
+			if (shuffle) {
 				solve = false;
-		}
-		if (key.equals("X")) {
+			}
+		} else if (key.equals("X")) {
 			solve = !solve;
-			if (solve)
+			if (solve) {
 				shuffle = false;
+			}
 		}
 	}
 
 	@Override
 	public void keyReleased(KeyEvent e) {
 		String key = KeyEvent.getKeyText(e.getKeyCode());
-		if (key.equals("D"))
+		if (key.equals("D")) {
 			down = false;
-		if (key.equals("S"))
+		} else if (key.equals("S")) {
 			right = false;
-		if (key.equals("A"))
+		} else if (key.equals("A")) {
 			up = false;
-		if (key.equals("W"))
+		} else if (key.equals("W")) {
 			left = false;
+		}
 	}
 
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		if (selected.equals(none)) {
 			selected = selecting;
-			for (int i = 0; i < 3; i++)
+			for (int i = 0; i < 3; i++) {
 				center[i] = selecting.center[i];
+			}
 		} else {
-			if (selecting == selected)
+			if (selecting == selected) {
 				selected = none;
-			if (rotateTime > 0)
+			}
+			if (rotateTime > 0) {
 				return;
+			}
 			int index = -1;
 			for (int i = 0; i < 3; i++) {
 				if (Math.abs(selecting.center[i] - selected.center[i]) < 5) {
-					if (index != -1)
+					if (index != -1) {
 						return;
+					}
 					index = i;
 				}
 			}
-			if (index == -1)
+			if (index == -1) {
 				return;
+			}
 			double val = selected.center[index];
 			int face1 = index == 0 ? 1 : 0;
 			int face2 = 3 - index - face1;
@@ -537,8 +609,9 @@ public class Rubik extends JPanel implements KeyListener, MouseListener {
 					- selecting.center[face2] * selected.center[face1]) > 0 ? 1 : -1;
 			double layerDouble = (val + value - 30) / 100;
 			int layer = Integer.parseInt(String.format("%.0f", layerDouble));
-			if (layer == n)
+			if (layer == n) {
 				layer = n - 1;
+			}
 			rotateTime = 8;
 			rotateDirection = -5 * direction;
 			rotateFace = index;
